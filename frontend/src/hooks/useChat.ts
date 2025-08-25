@@ -13,10 +13,11 @@ export const useChat = () => {
     if (savedChats) {
       try {
         const parsedChats = JSON.parse(savedChats);
-        // Convert string dates back to Date objects
+        // Convert string dates back to Date objects and ensure isEncrypted field exists
         const chatsWithDates = parsedChats.map((chat: any) => ({
           ...chat,
           createdAt: new Date(chat.createdAt),
+          isEncrypted: chat.isEncrypted !== undefined ? chat.isEncrypted : true, // Default to true for existing chats
           messages: chat.messages.map((msg: any) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
@@ -40,7 +41,8 @@ export const useChat = () => {
       address,
       secretKey: secretKey || generateSecretKey(),
       messages: [],
-      createdAt: new Date()
+      createdAt: new Date(),
+      isEncrypted: true // Default to encrypted
     };
 
     setChats(prev => [...prev, newChat]);
@@ -49,22 +51,24 @@ export const useChat = () => {
   };
 
   const sendMessage = (content: string, receiver: string, secretKey: string): Message => {
-    const encryptedContent = encryptMessage(content, secretKey);
-    
-    const message: Message = {
-      id: uuidv4(),
-      content: encryptedContent,
-      sender: 'me',
-      receiver,
-      timestamp: new Date(),
-      isEncrypted: true
-    };
-
     // Find or create chat for this receiver
     let chat = chats.find(c => c.address === receiver);
     if (!chat) {
       chat = createChat(receiver, secretKey);
     }
+
+    // Determine if message should be encrypted based on chat setting
+    const shouldEncrypt = chat.isEncrypted;
+    const messageContent = shouldEncrypt ? encryptMessage(content, secretKey) : content;
+    
+    const message: Message = {
+      id: uuidv4(),
+      content: messageContent,
+      sender: 'me',
+      receiver,
+      timestamp: new Date(),
+      isEncrypted: shouldEncrypt
+    };
 
     // Add message to chat
     setChats(prev => prev.map(c => 
@@ -114,6 +118,52 @@ export const useChat = () => {
     return decryptMessage(message.content, chat.secretKey);
   };
 
+  const editMessage = (messageId: string, newContent: string, chatId: string): void => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+      throw new Error('Chat not found');
+    }
+
+    const message = chat.messages.find(m => m.id === messageId);
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    // If the message is encrypted, encrypt the new content
+    const updatedContent = message.isEncrypted 
+      ? encryptMessage(newContent, chat.secretKey) 
+      : newContent;
+
+    setChats(prev => prev.map(c => 
+      c.id === chatId 
+        ? {
+            ...c,
+            messages: c.messages.map(m => 
+              m.id === messageId 
+                ? { ...m, content: updatedContent }
+                : m
+            )
+          }
+        : c
+    ));
+  };
+
+  const deleteMessage = (messageId: string, chatId: string): void => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+      throw new Error('Chat not found');
+    }
+
+    setChats(prev => prev.map(c => 
+      c.id === chatId 
+        ? {
+            ...c,
+            messages: c.messages.filter(m => m.id !== messageId)
+          }
+        : c
+    ));
+  };
+
   const getActiveChat = (): Chat | null => {
     return chats.find(c => c.id === activeChatId) || null;
   };
@@ -125,6 +175,14 @@ export const useChat = () => {
     }
   };
 
+  const toggleChatEncryption = (chatId: string) => {
+    setChats(prev => prev.map(c => 
+      c.id === chatId 
+        ? { ...c, isEncrypted: !c.isEncrypted }
+        : c
+    ));
+  };
+
   return {
     chats,
     activeChatId,
@@ -133,7 +191,10 @@ export const useChat = () => {
     sendMessage,
     receiveMessage,
     decryptMessageInChat,
+    editMessage,
+    deleteMessage,
     getActiveChat,
-    deleteChat
+    deleteChat,
+    toggleChatEncryption
   };
 };

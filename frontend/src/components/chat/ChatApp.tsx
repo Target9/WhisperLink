@@ -5,6 +5,7 @@ import { NewChatDialog } from './NewChatDialog';
 import { useChat } from '../../hooks/useChat';
 import { Button } from '../ui/button';
 import { Plus, Shield } from 'lucide-react';
+import type { Group, UserSettings } from '../../types';
 
 export const ChatApp: React.FC = () => {
   const {
@@ -14,11 +15,20 @@ export const ChatApp: React.FC = () => {
     createChat,
     sendMessage,
     decryptMessageInChat,
+    editMessage,
+    deleteMessage,
     getActiveChat,
-    deleteChat
+    deleteChat,
+    toggleChatEncryption
   } = useChat();
 
   const [decryptedMessages, setDecryptedMessages] = useState<Record<string, string>>({});
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [settings, setSettings] = useState<UserSettings>({
+    isVisible: true,
+    secretKeys: {},
+    displayKeysInChats: false
+  });
 
   const handleNewChat = (address: string, secretKey: string) => {
     createChat(address, secretKey);
@@ -45,6 +55,35 @@ export const ChatApp: React.FC = () => {
     }
   };
 
+  const handleEditMessage = (messageId: string, newContent: string) => {
+    if (activeChatId) {
+      try {
+        editMessage(messageId, newContent, activeChatId);
+        console.log('Message edited successfully:', messageId);
+      } catch (error) {
+        console.error('Failed to edit message:', error);
+      }
+    }
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    if (activeChatId) {
+      try {
+        deleteMessage(messageId, activeChatId);
+        console.log('Message deleted successfully:', messageId);
+        
+        // Also remove from decrypted messages
+        setDecryptedMessages(prev => {
+          const newState = { ...prev };
+          delete newState[messageId];
+          return newState;
+        });
+      } catch (error) {
+        console.error('Failed to delete message:', error);
+      }
+    }
+  };
+
   const handleChatSelect = (chatId: string) => {
     setActiveChatId(chatId);
   };
@@ -64,6 +103,37 @@ export const ChatApp: React.FC = () => {
     });
   };
 
+  const handleToggleEncryption = (chatId: string) => {
+    toggleChatEncryption(chatId);
+  };
+
+  const handleCreateGroup = (name: string, description: string, chatIds: string[]) => {
+    const newGroup: Group = {
+      id: `group-${Date.now()}`,
+      name,
+      description,
+      createdAt: new Date(),
+      chatIds
+    };
+    setGroups(prev => [...prev, newGroup]);
+  };
+
+  const handleUpdateGroup = (groupId: string, name: string, description: string, chatIds: string[]) => {
+    setGroups(prev => prev.map(group => 
+      group.id === groupId 
+        ? { ...group, name, description, chatIds }
+        : group
+    ));
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    setGroups(prev => prev.filter(group => group.id !== groupId));
+  };
+
+  const handleSettingsChange = (newSettings: UserSettings) => {
+    setSettings(newSettings);
+  };
+
   const activeChat = getActiveChat();
 
   return (
@@ -73,8 +143,15 @@ export const ChatApp: React.FC = () => {
         chats={chats}
         activeChatId={activeChatId}
         onChatSelect={handleChatSelect}
-        onNewChat={() => {}} // This will be handled by the dialog
+        onNewChat={handleNewChat}
         onDeleteChat={handleDeleteChat}
+        onToggleEncryption={handleToggleEncryption}
+        groups={groups}
+        settings={settings}
+        onCreateGroup={handleCreateGroup}
+        onUpdateGroup={handleUpdateGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onSettingsChange={handleSettingsChange}
       />
 
       {/* Main Chat Area */}
@@ -116,19 +193,13 @@ export const ChatApp: React.FC = () => {
               onSendMessage={handleSendMessage}
               onDecryptMessage={handleDecryptMessage}
               decryptedMessages={decryptedMessages}
+              settings={settings}
+              onToggleEncryption={activeChat ? () => handleToggleEncryption(activeChat.id) : undefined}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
             />
             
-            {/* Floating New Chat Button */}
-            <div className="absolute bottom-6 right-6">
-              <NewChatDialog
-                onNewChat={handleNewChat}
-                trigger={
-                  <Button size="icon" className="h-12 w-12 rounded-full shadow-lg">
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                }
-              />
-            </div>
+
           </>
         )}
       </div>

@@ -1,17 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Chat } from '../../types';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
-import { Trash2, MessageCircle, Plus } from 'lucide-react';
+import { Trash2, MessageCircle, Plus, Settings, FolderPlus, Lock, Unlock } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { NewChatDialog } from './NewChatDialog';
+import { SettingsDialog } from './SettingsDialog';
+import { GroupsDialog } from './GroupsDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface ChatSidebarProps {
   chats: Chat[];
   activeChatId: string | null;
   onChatSelect: (chatId: string) => void;
-  onNewChat: () => void;
+  onNewChat: (address: string, secretKey: string) => void;
   onDeleteChat: (chatId: string) => void;
+  onToggleEncryption?: (chatId: string) => void;
+  groups?: any[];
+  settings?: any;
+  onCreateGroup?: (name: string, description: string, chatIds: string[]) => void;
+  onUpdateGroup?: (groupId: string, name: string, description: string, chatIds: string[]) => void;
+  onDeleteGroup?: (groupId: string) => void;
+  onSettingsChange?: (settings: any) => void;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -19,7 +31,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   activeChatId,
   onChatSelect,
   onNewChat,
-  onDeleteChat
+  onDeleteChat,
+  onToggleEncryption,
+  groups = [],
+  settings,
+  onCreateGroup,
+  onUpdateGroup,
+  onDeleteGroup,
+  onSettingsChange
 }) => {
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -38,14 +57,36 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     <div className="w-80 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center border-b px-4">
         <h2 className="text-lg font-semibold">WhisperLink</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="ml-auto"
-          onClick={onNewChat}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1 ml-auto">
+          {onCreateGroup && onUpdateGroup && onDeleteGroup && (
+            <GroupsDialog
+              chats={chats}
+              groups={groups}
+              onCreateGroup={onCreateGroup}
+              onUpdateGroup={onUpdateGroup}
+              onDeleteGroup={onDeleteGroup}
+            />
+          )}
+          {onSettingsChange && settings && (
+            <SettingsDialog
+              chats={chats}
+              settings={settings}
+              onSettingsChange={onSettingsChange}
+            />
+          )}
+          <NewChatDialog
+            onNewChat={onNewChat}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                title="New Chat"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            }
+          />
+        </div>
       </div>
       
       <ScrollArea className="h-[calc(100vh-3.5rem)]">
@@ -64,7 +105,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 <Button
                   variant="ghost"
                   className={cn(
-                    "w-full justify-start h-auto p-3 mb-1",
+                    "w-full justify-start h-auto p-3 mb-1 group",
                     activeChatId === chat.id && "bg-accent"
                   )}
                   onClick={() => onChatSelect(chat.id)}
@@ -82,6 +123,54 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       <span className="text-xs text-muted-foreground">
                         {formatDate(chat.createdAt)}
                       </span>
+                      {onToggleEncryption && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {chat.isEncrypted ? (
+                                      <Lock className="h-3 w-3" />
+                                    ) : (
+                                      <Unlock className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      {chat.isEncrypted ? 'Disable Encryption' : 'Enable Encryption'}
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {chat.isEncrypted 
+                                        ? 'Are you sure you want to disable encryption for this chat? Messages will be sent in plain text.'
+                                        : 'Are you sure you want to enable encryption for this chat? Messages will be encrypted using AES-256.'
+                                      }
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => onToggleEncryption(chat.id)}
+                                    >
+                                      {chat.isEncrypted ? 'Disable Encryption' : 'Enable Encryption'}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{chat.isEncrypted ? 'Messages encrypted' : 'Messages not encrypted'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

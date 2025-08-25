@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Chat, Message } from '../../types';
+import type { Chat, Message, UserSettings } from '../../types';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -12,13 +12,21 @@ interface ChatInterfaceProps {
   onSendMessage: (message: string) => void;
   onDecryptMessage: (messageId: string) => string;
   decryptedMessages: Record<string, string>;
+  settings: UserSettings;
+  onToggleEncryption?: () => void;
+  onEditMessage?: (messageId: string, newContent: string) => void;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   chat,
   onSendMessage,
   onDecryptMessage,
-  decryptedMessages
+  decryptedMessages,
+  settings,
+  onToggleEncryption,
+  onEditMessage,
+  onDeleteMessage
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +40,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   if (!chat) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto" />
           <h3 className="text-lg font-semibold">No chat selected</h3>
@@ -45,31 +53,35 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full bg-background">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between px-6 py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
             <Shield className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="font-semibold">{chat.address}</h2>
+            <h2 className="font-semibold text-foreground">{chat.address}</h2>
             <p className="text-xs text-muted-foreground">
               {chat.messages.length} messages • Created {chat.createdAt.toLocaleDateString()}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs">
-            <Key className="h-3 w-3 mr-1" />
-            Secret Key
-          </Button>
+          {settings.displayKeysInChats && (
+            <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-md border">
+              <Key className="h-3 w-3 text-muted-foreground" />
+              <code className="text-xs font-mono text-muted-foreground">
+                {chat.secretKey}
+              </code>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      <ScrollArea className="flex-1">
+        <div className="py-4">
           {chat.messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <MessageCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -87,6 +99,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 isDecrypted={!!decryptedMessages[message.id]}
                 decryptedContent={decryptedMessages[message.id]}
                 onDecrypt={() => onDecryptMessage(message.id)}
+                onEdit={onEditMessage}
+                onDelete={onDeleteMessage}
               />
             ))
           )}
@@ -95,10 +109,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </ScrollArea>
 
       {/* Chat Input */}
-      <ChatInput
-        onSendMessage={onSendMessage}
-        placeholder={`Send encrypted message to ${chat.address}...`}
-      />
+      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <ChatInput
+          onSendMessage={onSendMessage}
+          placeholder={`Send ${chat.isEncrypted ? 'encrypted' : ''} message to ${chat.address}...`}
+          isEncrypted={chat.isEncrypted}
+          onToggleEncryption={onToggleEncryption}
+        />
+      </div>
     </div>
   );
 };
