@@ -1,16 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import type { Chat, Message, UserSettings } from '../../types';
-import { ChatSidebar } from './ChatSidebar';
+import React, { useRef, useEffect } from 'react';
+import type { Chat, UserSettings } from '../../types';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ScrollArea } from '../ui/scroll-area';
-import { Button } from '../ui/button';
 import { MessageCircle, Shield, Key } from 'lucide-react';
 
 interface ChatInterfaceProps {
   chat: Chat | null;
   onSendMessage: (message: string) => void;
   onDecryptMessage: (messageId: string) => string;
+  onFixKey?: () => void;
   decryptedMessages: Record<string, string>;
   settings: UserSettings;
   onToggleEncryption?: () => void;
@@ -22,6 +21,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   chat,
   onSendMessage,
   onDecryptMessage,
+  onFixKey,
   decryptedMessages,
   settings,
   onToggleEncryption,
@@ -91,18 +91,29 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </p>
             </div>
           ) : (
-            chat.messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                isOwnMessage={message.sender === 'me'}
-                isDecrypted={!!decryptedMessages[message.id]}
-                decryptedContent={decryptedMessages[message.id]}
-                onDecrypt={() => onDecryptMessage(message.id)}
-                onEdit={onEditMessage}
-                onDelete={onDeleteMessage}
-              />
-            ))
+            chat.messages.map((message) => {
+              const isOwn = message.sender === (settings.currentUsername || 'me');
+              console.log('ChatInterface mapping message:', {
+                messageId: message.id,
+                sender: message.sender,
+                currentUsername: settings.currentUsername,
+                isOwn,
+                contentLength: message.content.length
+              });
+              return (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  isOwnMessage={isOwn}
+                  isDecrypted={!!decryptedMessages[message.id]}
+                  decryptedContent={decryptedMessages[message.id]}
+                  onDecrypt={() => onDecryptMessage(message.id)}
+                  onFixKey={onFixKey}
+                  onEdit={onEditMessage}
+                  onDelete={onDeleteMessage}
+                />
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>

@@ -29,6 +29,7 @@ export interface UserSettings {
   isVisible: boolean;
   secretKeys: Record<string, string>; // chatId -> secretKey mapping
   displayKeysInChats: boolean; // Toggle for displaying secret keys in chat interface
+  currentUsername?: string; // Current user's username
 }
 
 export interface EncryptedMessage {

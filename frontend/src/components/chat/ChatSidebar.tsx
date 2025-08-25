@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
 import type { Chat } from '../../types';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
-import { Trash2, MessageCircle, Plus, Settings, FolderPlus, Lock, Unlock } from 'lucide-react';
+import { Trash2, MessageCircle, Plus, Lock, Unlock, Users, Key } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { NewChatDialog } from './NewChatDialog';
 import { SettingsDialog } from './SettingsDialog';
@@ -18,12 +17,14 @@ interface ChatSidebarProps {
   onNewChat: (address: string, secretKey: string) => void;
   onDeleteChat: (chatId: string) => void;
   onToggleEncryption?: (chatId: string) => void;
+  onEditKey?: (chatId: string) => void;
   groups?: any[];
   settings?: any;
   onCreateGroup?: (name: string, description: string, chatIds: string[]) => void;
   onUpdateGroup?: (groupId: string, name: string, description: string, chatIds: string[]) => void;
   onDeleteGroup?: (groupId: string) => void;
   onSettingsChange?: (settings: any) => void;
+  onlineUsers?: string[];
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -33,12 +34,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onNewChat,
   onDeleteChat,
   onToggleEncryption,
+  onEditKey,
   groups = [],
   settings,
   onCreateGroup,
   onUpdateGroup,
   onDeleteGroup,
-  onSettingsChange
+  onSettingsChange,
+  onlineUsers = []
 }) => {
   const formatDate = (date: Date) => {
     const now = new Date();
@@ -76,6 +79,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           )}
           <NewChatDialog
             onNewChat={onNewChat}
+            onlineUsers={onlineUsers}
             trigger={
               <Button
                 variant="ghost"
@@ -101,11 +105,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             </div>
           ) : (
             chats.map((chat) => (
-              <div key={chat.id}>
-                <Button
-                  variant="ghost"
+              <div key={chat.id} className="mb-1">
+                <div
                   className={cn(
-                    "w-full justify-start h-auto p-3 mb-1 group",
+                    "w-full p-3 rounded-md hover:bg-accent transition-colors cursor-pointer group",
                     activeChatId === chat.id && "bg-accent"
                   )}
                   onClick={() => onChatSelect(chat.id)}
@@ -171,6 +174,20 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                           </Tooltip>
                         </TooltipProvider>
                       )}
+                      {onEditKey && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditKey(chat.id);
+                          }}
+                          title="Edit encryption key"
+                        >
+                          <Key className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -184,10 +201,34 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       </Button>
                     </div>
                   </div>
-                </Button>
+                </div>
                 <Separator className="my-1" />
               </div>
             ))
+          )}
+
+          {/* Online Users Section */}
+          {onlineUsers.length > 0 && (
+            <>
+              <Separator className="my-4" />
+              <div className="px-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">Online Users</span>
+                </div>
+                <div className="space-y-1">
+                  {onlineUsers.map((user) => (
+                    <div
+                      key={user}
+                      className="flex items-center gap-2 px-2 py-1 rounded text-sm"
+                    >
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-muted-foreground">{user}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
       </ScrollArea>

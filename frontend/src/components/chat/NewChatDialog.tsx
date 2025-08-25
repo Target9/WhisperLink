@@ -5,17 +5,19 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
-import { RefreshCw, Copy, Check, AlertCircle } from 'lucide-react';
+import { RefreshCw, Copy, Check, AlertCircle, Users } from 'lucide-react';
 import { generateSecretKey, validateAddress } from '../../utils/encryption';
 
 interface NewChatDialogProps {
   onNewChat: (address: string, secretKey: string) => void;
   trigger?: React.ReactNode;
+  onlineUsers?: string[];
 }
 
 export const NewChatDialog: React.FC<NewChatDialogProps> = ({
   onNewChat,
-  trigger
+  trigger,
+  onlineUsers = []
 }) => {
   const [open, setOpen] = useState(false);
   const [address, setAddress] = useState('');
@@ -112,6 +114,30 @@ export const NewChatDialog: React.FC<NewChatDialogProps> = ({
             <p className="text-xs text-muted-foreground">
               This is the unique identifier for the person you want to chat with
             </p>
+            
+            {/* Online Users Suggestions */}
+            {onlineUsers.length > 0 && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Online Users</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {onlineUsers.map((user) => (
+                    <Button
+                      key={user}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => setAddress(user)}
+                    >
+                      {user}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

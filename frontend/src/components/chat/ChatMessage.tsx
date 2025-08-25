@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Message } from '../../types';
-import { Lock, Edit, Trash2 } from 'lucide-react';
+import { Lock, Edit, Trash2, Key } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
   ContextMenu,
@@ -14,6 +14,7 @@ interface ChatMessageProps {
   isDecrypted?: boolean;
   decryptedContent?: string;
   onDecrypt?: () => void;
+  onFixKey?: () => void;
   isOwnMessage?: boolean;
   onEdit?: (messageId: string, newContent: string) => void;
   onDelete?: (messageId: string) => void;
@@ -24,26 +25,53 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   isDecrypted = false,
   decryptedContent,
   onDecrypt,
+  onFixKey,
   isOwnMessage = false,
   onEdit,
   onDelete
 }) => {
+  // Debug logging
+  console.log('ChatMessage render:', {
+    messageId: message.id,
+    sender: message.sender,
+    isOwnMessage,
+    content: message.content.substring(0, 50) + '...',
+    isEncrypted: message.isEncrypted
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
+  const [autoDecryptedContent, setAutoDecryptedContent] = useState<string | null>(null);
+  const [decryptionError, setDecryptionError] = useState<string | null>(null);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Automatically decrypt if not already decrypted
+  // Automatically attempt to decrypt encrypted messages
   useEffect(() => {
-    if (message.isEncrypted && !isDecrypted && onDecrypt) {
-      onDecrypt();
+    if (message.isEncrypted && !isDecrypted && !autoDecryptedContent && onDecrypt) {
+      try {
+        onDecrypt();
+      } catch (error) {
+        // If automatic decryption fails, we'll handle it in the UI
+        setDecryptionError(error instanceof Error ? error.message : 'Failed to decrypt message');
+      }
     }
-  }, [message.id, message.isEncrypted, isDecrypted, onDecrypt]);
+  }, [message.id, message.isEncrypted, isDecrypted, autoDecryptedContent, onDecrypt]);
+
+  // Update auto-decrypted content when decryptedContent changes
+  useEffect(() => {
+    if (decryptedContent && !decryptedContent.startsWith('Failed to decrypt') && !decryptedContent.startsWith('No key specified')) {
+      setAutoDecryptedContent(decryptedContent);
+      setDecryptionError(null);
+    } else if (decryptedContent) {
+      setDecryptionError(decryptedContent);
+      setAutoDecryptedContent(null);
+    }
+  }, [decryptedContent]);
 
   const handleEdit = () => {
-    setEditContent(message.isEncrypted && isDecrypted ? decryptedContent || '' : message.content);
+    setEditContent(message.isEncrypted && (isDecrypted || autoDecryptedContent) ? (autoDecryptedContent || decryptedContent || '') : message.content);
     setIsEditing(true);
   };
 
@@ -71,6 +99,54 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       handleSaveEdit();
     } else if (e.key === 'Escape') {
       handleCancelEdit();
+    }
+  };
+
+  const handleFixKey = () => {
+    if (onFixKey) {
+      onFixKey();
+    }
+  };
+
+  const getMessageContent = () => {
+    if (message.isEncrypted) {
+      if (autoDecryptedContent) {
+        return autoDecryptedContent;
+      } else if (isDecrypted && decryptedContent) {
+        return decryptedContent;
+      } else if (decryptionError) {
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground italic">[Encrypted Message]</span>
+            <span className="text-red-500 text-xs">({decryptionError})</span>
+            {onFixKey && (
+              <button
+                onClick={handleFixKey}
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                <Key className="h-3 w-3" />
+                Fix it
+              </button>
+            )}
+          </div>
+        );
+      } else {
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground italic">[Encrypted Message]</span>
+            {onDecrypt && (
+              <button
+                onClick={onDecrypt}
+                className="text-xs text-primary hover:underline"
+              >
+                Decrypt
+              </button>
+            )}
+          </div>
+        );
+      }
+    } else {
+      return message.content;
     }
   };
 
@@ -147,7 +223,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   </div>
                 ) : (
                   <div className="text-foreground">
-                    {message.isEncrypted && isDecrypted ? decryptedContent : message.content}
+                    {getMessageContent()}
                   </div>
                 )}
               </div>
@@ -157,6 +233,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       </ContextMenuTrigger>
       
       <ContextMenuContent>
+        {message.isEncrypted && decryptionError && onFixKey && (
+          <ContextMenuItem onClick={handleFixKey}>
+            <Key className="h-4 w-4" />
+            Fix encryption key
+          </ContextMenuItem>
+        )}
+        {message.isEncrypted && !autoDecryptedContent && !isDecrypted && onDecrypt && (
+          <ContextMenuItem onClick={onDecrypt}>
+            <Lock className="h-4 w-4" />
+            Decrypt message
+          </ContextMenuItem>
+        )}
         <ContextMenuItem onClick={handleEdit}>
           <Edit className="h-4 w-4" />
           Edit message
