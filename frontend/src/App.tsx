@@ -1,9 +1,10 @@
 import { ThemeProvider } from "./components/theme/theme-provider"
+import { ChatApp } from "./components/chat/ChatApp"
 
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <div>Hello World</div>
+      <ChatApp />
     </ThemeProvider>
   )
 }
