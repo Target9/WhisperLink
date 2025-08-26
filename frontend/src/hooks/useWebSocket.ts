@@ -40,7 +40,7 @@ export const useWebSocket = (): UseWebSocketReturn => {
     processedMessages.current.clear(); // Clear processed messages on new connection
 
     try {
-      const ws = new WebSocket(`ws://localhost:8000/ws/${username}`);
+      const ws = new WebSocket(`ws://192.168.12.7:8000/ws/${username}`);
       wsRef.current = ws;
 
       ws.onopen = () => {

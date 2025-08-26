@@ -45,7 +45,7 @@ export const UsernameDialog: React.FC<UsernameDialogProps> = ({ isOpen, onSubmit
 
     try {
       // Check if username is available
-      const response = await fetch('http://localhost:8000/check-username', {
+      const response = await fetch('http://192.168.12.7:8000/check-username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

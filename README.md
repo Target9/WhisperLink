@@ -44,7 +44,7 @@ A real-time encrypted messaging application with WebSocket support and username-
    python app.py --debug
    ```
 
-   The server will start on `http://localhost:8000` with debug mode enabled.
+   The server will start on `http://192.168.12.7:8000` with debug mode enabled.
 
 ### Frontend Setup
 
@@ -63,7 +63,7 @@ A real-time encrypted messaging application with WebSocket support and username-
    npm run dev
    ```
 
-   The frontend will start on `http://localhost:5173`.
+   The frontend will start on `http://192.168.12.7:5173`.
 
 ## Usage
 
@@ -106,7 +106,7 @@ A real-time encrypted messaging application with WebSocket support and username-
 ### Backend Development
 
 - Run with debug mode: `python app.py --debug`
-- Access API docs: `http://localhost:8000/docs`
+- Access API docs: `http://192.168.12.7:8000/docs`
 - WebSocket testing: Use browser dev tools or WebSocket clients
 
 ### Frontend Development

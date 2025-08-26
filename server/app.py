@@ -81,6 +81,7 @@ class ConnectionManager:
 
     async def send_personal_message(self, message: str, username: str):
         if username in self.active_connections:
+            logging.info(f"Sending message to {username}: {message}")
             await self.active_connections[username].send_text(message)
 
     async def broadcast(self, message: str, exclude_username: str = None):
@@ -92,15 +93,19 @@ class ConnectionManager:
                     logging.error(f"Failed to send message to {username}: {e}")
 
     def is_username_taken(self, username: str) -> bool:
+        logging.info(f"Checking if username {username} is taken")
         return username in self.usernames
 
     def get_online_users(self) -> List[str]:
+        logging.info(f"Getting online users: {self.usernames}")
         return list(self.usernames)
 
     def add_message(self, message: Message):
+        logging.info(f"Adding message: {message}")
         self.messages.append(message)
 
     def get_messages_for_user(self, username: str) -> List[Message]:
+        logging.info(f"Getting messages for user: {username}")
         return [msg for msg in self.messages if msg.sender == username or msg.receiver == username]
 
 manager = ConnectionManager()
@@ -111,20 +116,25 @@ async def root():
 
 @app.get("/users")
 async def get_online_users():
+    logging.info(f"Getting online users")
     return {"users": manager.get_online_users()}
 
 @app.post("/check-username")
 async def check_username(request: UsernameRequest):
+    logging.info(f"Checking username: {request.username}")
     is_taken = manager.is_username_taken(request.username)
     return {"username": request.username, "is_taken": is_taken}
 
 @app.websocket("/ws/{username}")
 async def websocket_endpoint(websocket: WebSocket, username: str):
+    logging.info(f"Websocket endpoint called for user: {username}")
     # Check if username is already taken
     if manager.is_username_taken(username):
         await websocket.close(code=4000, reason="Username already taken")
+        logging.info(f"Username {username} already taken")
         return
 
+    logging.info(f"Connecting user {username}")
     await manager.connect(websocket, username)
     
     try:
@@ -134,6 +144,7 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             "content": f"Welcome {username}! You are now connected.",
             "timestamp": datetime.now().isoformat()
         }
+        logging.info(f"Sending welcome message to {username}")
         await websocket.send_text(json.dumps(welcome_message))
 
         # Send current online users
@@ -141,6 +152,7 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             "type": "users",
             "users": manager.get_online_users()
         }
+        logging.info(f"Sending users message to {username}")
         await websocket.send_text(json.dumps(users_message))
 
         # Notify other users about new connection
@@ -149,16 +161,18 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             "username": username,
             "timestamp": datetime.now().isoformat()
         }
+        logging.info(f"Sending user joined message to {username}")
         await manager.broadcast(json.dumps(user_joined_message), username)
 
         while True:
             data = await websocket.receive_text()
+            logging.info(f"Received data: {data}")
             message_data = json.loads(data)
             
             if message_data.get("type") == "message":
                 # Handle chat message
                 chat_message = ChatMessage(**message_data)
-                
+                logging.info(f"Chat message: {chat_message}")
                 # Create message object
                 message = Message(
                     id=f"msg_{datetime.now().timestamp()}",
@@ -168,10 +182,10 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     timestamp=datetime.now(),
                     isEncrypted=chat_message.isEncrypted
                 )
-                
+                logging.info(f"Message: {message}")
                 # Store message
                 manager.add_message(message)
-                
+                logging.info(f"Message added to manager")
                 # Send message to receiver if online
                 if chat_message.receiver in manager.active_connections:
                     message_payload = {
@@ -186,22 +200,25 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                         }
                     }
                     await manager.send_personal_message(json.dumps(message_payload), chat_message.receiver)
-                
+                    logging.info(f"Message sent to {chat_message.receiver}")
                 # Send confirmation to sender
                 confirmation = {
                     "type": "message_sent",
                     "message_id": message.id,
                     "timestamp": datetime.now().isoformat()
                 }
+                logging.info(f"Sending confirmation to {username}")
                 await websocket.send_text(json.dumps(confirmation))
-                
+                logging.info(f"Confirmation sent to {username}")
             elif message_data.get("type") == "ping":
                 # Handle ping for connection health
                 pong = {
                     "type": "pong",
                     "timestamp": datetime.now().isoformat()
                 }
+                logging.info(f"Sending pong to {username}")
                 await websocket.send_text(json.dumps(pong))
+                logging.info(f"Pong sent to {username}")
 
     except WebSocketDisconnect:
         manager.disconnect(username)
@@ -211,7 +228,9 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
             "username": username,
             "timestamp": datetime.now().isoformat()
         }
+        logging.info(f"Sending user left message to {username}")
         await manager.broadcast(json.dumps(user_left_message))
+        logging.info(f"User left message sent to {username}")
 
 if __name__ == "__main__":
     uvicorn_config = {
