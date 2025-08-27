@@ -52,8 +52,8 @@ export const EditKeyDialog: React.FC<EditKeyDialogProps> = ({
       return;
     }
 
-    if (secretKey.trim().length < 16) {
-      setError('Secret key must be at least 16 characters');
+    if (secretKey.trim().length < 10) {
+      setError('Secret key must be at least 10 characters');
       return;
     }
 

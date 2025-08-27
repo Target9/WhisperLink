@@ -56,8 +56,8 @@ export const NewChatDialog: React.FC<NewChatDialogProps> = ({
 
     if (!secretKey.trim()) {
       newErrors.secretKey = 'Secret key is required';
-    } else if (secretKey.trim().length < 16) {
-      newErrors.secretKey = 'Secret key must be at least 16 characters';
+    } else if (secretKey.trim().length < 10) {
+      newErrors.secretKey = 'Secret key must be at least 10 characters';
     }
 
     setErrors(newErrors);
